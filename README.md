@@ -32,6 +32,14 @@ username: admin
 password: admin
 ```
 
+## End Points
+
+```
+Caso usem o postman, dei acesso pra vocês no workspace que utilizei:
+
+https://cloudy-robot-425226.postman.co/workspace/blog~9560c9d5-f181-4836-8e50-06ba58841ee7/collection/14337611-d00b90cb-029e-4d78-840c-88d0d41106b8?action=share&creator=14337611
+```
+
 ## todo
 
 - [x] Criar login API + Front (pode ser em memória com username e senha fixo)
