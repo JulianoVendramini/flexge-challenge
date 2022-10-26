@@ -18,13 +18,13 @@ export class CreateSession {
     const user = await this.userRepository.findByUsername(username)
 
     if (!user) {
-      throw new Error('Account does not exists')
+      throw new Error('Username or password is incorrect')
     }
 
     const checkPassword = await bcrypt.compare(password, user.password)
 
     if (!checkPassword) {
-      throw new Error('Invalid password')
+      throw new Error('Username or password is incorrect')
     }
 
     const secret = process.env.SECRET

@@ -3,6 +3,8 @@ import express from 'express'
 import mongoose from 'mongoose'
 import { Company } from './infra/db/models/Company'
 import { Contract } from './infra/db/models/Contract'
+import { User } from './infra/db/models/User'
+import * as bcrypt from 'bcrypt'
 
 dotenv.config()
 
@@ -54,10 +56,22 @@ const seedCompanies = [
   }
 ]
 
+const salt = await bcrypt.genSalt(10)
+const passwordHash = await bcrypt.hash('admin', salt)
+
+const seedUser = {
+  username: 'admin',
+  password: passwordHash
+}
+
 const seedDB = async () => {
   await Contract.deleteMany({})
   await Company.deleteMany({})
   await Company.insertMany(seedCompanies)
+  await User.deleteMany({})
+  //add user
+  await User.insertMany(seedUser)
+
   console.log('DB seeded!')
 }
 
