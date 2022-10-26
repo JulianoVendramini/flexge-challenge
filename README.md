@@ -22,6 +22,11 @@ cd web -> entrar na pasta da api
 yarn -> instalar dependencias
 
 yarn dev -> rodar o server
+
+Acesse a aplicação aqui: http://127.0.0.1:5173/
+
+username: admin
+password: admin
 ```
 
 ## todo
