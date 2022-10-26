@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv'
 import express from 'express'
 import mongoose from 'mongoose'
 import { Company } from './infra/db/models/Company'
+import { Contract } from './infra/db/models/Contract'
 
 dotenv.config()
 
@@ -54,6 +55,7 @@ const seedCompanies = [
 ]
 
 const seedDB = async () => {
+  await Contract.deleteMany({})
   await Company.deleteMany({})
   await Company.insertMany(seedCompanies)
   console.log('DB seeded!')
