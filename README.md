@@ -38,6 +38,22 @@ password: admin
 Caso usem o postman, dei acesso pra vocês no workspace que utilizei:
 
 https://cloudy-robot-425226.postman.co/workspace/blog~9560c9d5-f181-4836-8e50-06ba58841ee7/collection/14337611-d00b90cb-029e-4d78-840c-88d0d41106b8?action=share&creator=14337611
+
+**Company**
+POST -> [/](http://localhost:3000/)company (criar uma company)
+GET -> http://localhost:3000/company (retorna todas as companies)
+
+**Contract**
+POST -> http://localhost:3000/contract (criar um contrato)
+PUT -> http://localhost:3000/contract/:socialReason (atualizar um contrato baseado no social reason)
+GET -> http://localhost:3000/contract (retorna todos os contratos)
+GET -> http://localhost:3000/contract/:socialReason (retorna um contrato baseado no social reason)
+
+**User**
+POST -> http://localhost:3000/auth/register (criar uma nova conta)
+POST -> http://localhost:3000/auth/login (fazer login)
+
+
 ```
 
 ## todo
