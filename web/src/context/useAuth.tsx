@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import useApi from '../hooks/useApi'
 import { User } from '../types/api'
 import axios from '../utils/axios'
@@ -12,6 +13,7 @@ type AuthContextProps = {
   user: User | null
   loading: boolean
   signIn: (username: string, password: string) => Promise<boolean>
+  logOut: () => void
 }
 
 export const AuthContext = createContext<AuthContextProps>(
@@ -22,6 +24,7 @@ export const AuthProvider = ({ children }: Props) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const api = useApi()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const user = getUserLocal()
@@ -39,9 +42,9 @@ export const AuthProvider = ({ children }: Props) => {
     if (data.user && data.token) {
       setToken(data.token)
       setUserLocal(data.user)
-
-      axios.defaults.headers.Authorization = `Bearer ${data.token}`
       setUser(data.user)
+
+      axios.defaults.headers.common = { Authorization: `Bearer ${data.token}` }
 
       return true
     }
@@ -49,11 +52,19 @@ export const AuthProvider = ({ children }: Props) => {
     return false
   }
 
+  const logOut = () => {
+    setUser(null)
+    setToken('')
+    setUserLocal(null)
+    navigate('/login')
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user,
         signIn,
+        logOut,
         loading
       }}
     >

@@ -1,18 +1,18 @@
-import { PlusOutlined } from '@ant-design/icons'
-import {
-  Button,
-  DatePicker,
-  DatePickerProps,
-  Form,
-  Input,
-  InputNumber,
-  Popconfirm,
-  Typography
-} from 'antd'
-import { Select } from 'antd'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 
-import React, { useState } from 'react'
 import Products from '../Products'
+
+import moment from 'moment'
+import { Button, DatePicker, DatePickerProps, Form, message } from 'antd'
+import { Select } from 'antd'
+import { useSelector, useDispatch } from 'react-redux'
+
+import { CompanyProps, ContractProps } from '../../types/api'
+import axios from '../../utils/axios'
+import { countries, states } from '../../utils/constants'
+import { resetProducts, useProducts } from '../../redux/sliceProducts'
 
 import * as S from './styles'
 
@@ -34,89 +34,16 @@ for (let i = 0; i < 10; i++) {
     address: `London Park no. ${i}`
   })
 }
-interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
-  editing: boolean
-  dataIndex: string
-  title: any
-  inputType: 'number' | 'text'
-  record: Item
-  index: number
-  children: React.ReactNode
-}
-
-const EditableCell: React.FC<EditableCellProps> = ({
-  editing,
-  dataIndex,
-  title,
-  inputType,
-  record,
-  index,
-  children,
-  ...restProps
-}) => {
-  const inputNode = inputType === 'number' ? <InputNumber /> : <Input />
-
-  return (
-    <td {...restProps}>
-      {editing ? (
-        <Form.Item
-          name={dataIndex}
-          style={{ margin: 0 }}
-          rules={[
-            {
-              required: true,
-              message: `Please Input ${title}!`
-            }
-          ]}
-        >
-          {inputNode}
-        </Form.Item>
-      ) : (
-        children
-      )}
-    </td>
-  )
-}
 
 const ContractForm = () => {
+  const { socialReason } = useParams()
   const [form] = Form.useForm()
-  const [data, setData] = useState(originData)
-  const [editingKey, setEditingKey] = useState('')
+  const [companies, setCompanies] = useState<CompanyProps[]>([])
+  const [contract, setContract] = useState<ContractProps>({} as ContractProps)
+  const products = useSelector(useProducts)
+  const dispatch = useDispatch()
 
-  const isEditing = (record: Item) => record.key === editingKey
-
-  const edit = (record: Partial<Item> & { key: React.Key }) => {
-    form.setFieldsValue({ name: '', age: '', address: '', ...record })
-    setEditingKey(record.key)
-  }
-
-  const cancel = () => {
-    setEditingKey('')
-  }
-
-  const save = async (key: React.Key) => {
-    try {
-      const row = (await form.validateFields()) as Item
-
-      const newData = [...data]
-      const index = newData.findIndex((item) => key === item.key)
-      if (index > -1) {
-        const item = newData[index]
-        newData.splice(index, 1, {
-          ...item,
-          ...row
-        })
-        setData(newData)
-        setEditingKey('')
-      } else {
-        newData.push(row)
-        setData(newData)
-        setEditingKey('')
-      }
-    } catch (errInfo) {
-      console.log('Validate Failed:', errInfo)
-    }
-  }
+  const isCountrySelected = !!Form.useWatch('country', form)
 
   const handleChange = (value: string) => {
     console.log(`selected ${value}`)
@@ -126,188 +53,225 @@ const ContractForm = () => {
     console.log(date, dateString)
   }
 
-  const columns = [
-    {
-      title: 'name',
-      dataIndex: 'name',
-      width: '25%',
-      editable: true
-    },
-    {
-      title: 'age',
-      dataIndex: 'age',
-      width: '15%',
-      editable: true
-    },
-    {
-      title: 'address',
-      dataIndex: 'address',
-      width: '40%',
-      editable: true
-    },
-    {
-      title: 'operation',
-      dataIndex: 'operation',
-      render: (_: any, record: Item) => {
-        const editable = isEditing(record)
-        return editable ? (
-          <span>
-            <Typography.Link
-              onClick={() => save(record.key)}
-              style={{ marginRight: 8 }}
-            >
-              Save
-            </Typography.Link>
-            <Popconfirm title="Sure to cancel?" onConfirm={cancel}>
-              <a>Cancel</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <Typography.Link
-            disabled={editingKey !== ''}
-            onClick={() => edit(record)}
-          >
-            Edit
-          </Typography.Link>
-        )
-      }
+  const handleSubmit = async (values: any) => {
+    if (!values) {
+      message.error('Please fill the form')
+      return
     }
-  ]
+    if (!socialReason && products.length === 0) {
+      message.error('Please add at least one product')
+      return
+    }
 
-  const mergedColumns = columns.map((col) => {
-    if (!col.editable) {
-      return col
+    const normalizedFormValues = {
+      ...values,
+      products
     }
-    return {
-      ...col,
-      onCell: (record: Item) => ({
-        record,
-        inputType: col.dataIndex === 'age' ? 'number' : 'text',
-        dataIndex: col.dataIndex,
-        title: col.title,
-        editing: isEditing(record)
-      })
+
+    if (socialReason) {
+      await axios.put(`/contract/${socialReason}`, normalizedFormValues)
+      message.success('Contract updated successfully')
+      return
     }
-  })
+
+    try {
+      await axios.post('/contract', normalizedFormValues)
+      message.success('Contract created successfully')
+      dispatch(resetProducts())
+      form.resetFields()
+    } catch (error) {
+      message.error(
+        'Contract Already Exists, please change the document number'
+      )
+      console.log('error', error)
+    }
+  }
+
+  const getCompanies = async () => {
+    const response = await axios.get('/company')
+
+    setCompanies(response.data)
+  }
+
+  useEffect(() => {
+    getCompanies()
+  }, [form])
+
+  useEffect(() => {
+    const getContract = async () => {
+      const response = await axios.get(`/contract/${socialReason}`)
+
+      const normalizedData = {
+        ...response.data,
+        contractStartDate: moment(response.data.contractStartsIn),
+        contractEndDate: moment(response.data.contractEndsIn),
+        contractDueDate: moment(response.data.dueDay),
+        company: response.data.company.name
+      }
+      form.setFieldsValue(normalizedData)
+
+      setContract(response.data)
+    }
+
+    if (socialReason) {
+      getContract()
+    }
+  }, [form, socialReason])
 
   return (
-    <S.Wrapper layout="vertical">
-      <Form.Item label="InputNumber">
-        <Select
-          defaultValue="lucy"
-          style={{ width: 120 }}
-          onChange={handleChange}
+    <S.Container>
+      <Button
+        type="primary"
+        style={{
+          position: 'fixed',
+          top: '12px',
+          left: '12px'
+        }}
+      >
+        <Link to="/contracts">Back</Link>
+      </Button>
+      {socialReason && <S.Title>Editing {contract.socialReason}</S.Title>}
+      <S.Wrapper layout="vertical" form={form} onFinish={handleSubmit}>
+        <Form.Item
+          label="Country"
+          name="country"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
         >
-          <Option value="jack">Jack</Option>
-          <Option value="lucy">Lucy</Option>
-          <Option value="disabled" disabled>
-            Disabled
-          </Option>
-          <Option value="Yiminghe">yiminghe</Option>
-        </Select>
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <Select
-          defaultValue="lucy"
-          style={{ width: 120 }}
-          onChange={handleChange}
+          <Select style={{ width: 180 }} onChange={handleChange}>
+            {countries.map((country) => (
+              <Option key={country.value} value={country.value}>
+                {country.label}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+        <Form.Item
+          label="State"
+          name="state"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
         >
-          <Option value="jack">Jack</Option>
-          <Option value="lucy">Lucy</Option>
-          <Option value="disabled" disabled>
-            Disabled
-          </Option>
-          <Option value="Yiminghe">yiminghe</Option>
-        </Select>
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <DatePicker onChange={onChange} />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <DatePicker onChange={onChange} />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <DatePicker onChange={onChange} />
-      </Form.Item>
-      <Form.Item label="InputNumber">
-        <Select
-          defaultValue="lucy"
-          style={{ width: 120 }}
-          onChange={handleChange}
+          <Select
+            style={{ width: 180 }}
+            onChange={handleChange}
+            disabled={!isCountrySelected}
+          >
+            {states.map((state) => (
+              <Option key={state.value} value={state.value}>
+                {state.label}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+        <Form.Item
+          label="City"
+          name="city"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
         >
-          <Option value="jack">Jack</Option>
-          <Option value="lucy">Lucy</Option>
-          <Option value="disabled" disabled>
-            Disabled
-          </Option>
-          <Option value="Yiminghe">yiminghe</Option>
-        </Select>
-      </Form.Item>
-      <S.Divider />
-      <S.Header>
-        <S.Title>Contract&apos;s Product</S.Title>
-        <Button type="primary" icon={<PlusOutlined />}>
-          New Contract
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Document Number"
+          name="documentNumber"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Social Reason"
+          name="socialReason"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Address"
+          name="address"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="District"
+          name="district"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Number"
+          name="number"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Zip Code"
+          name="zipCode"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Phone"
+          name="phone"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input />
+        </Form.Item>
+        <Form.Item
+          label="Contract starts in"
+          name="contractStartDate"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <DatePicker onChange={onChange} />
+        </Form.Item>
+        <Form.Item
+          label="Contract ends in"
+          name="contractEndDate"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <DatePicker onChange={onChange} />
+        </Form.Item>
+        <Form.Item
+          label="Due day"
+          name="contractDueDate"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <DatePicker onChange={onChange} />
+        </Form.Item>
+        <Form.Item
+          label="Company"
+          name="company"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <Select
+            style={{ width: 120 }}
+            onChange={handleChange}
+            disabled={!!socialReason}
+          >
+            {companies.map((company) => (
+              <Option key={company._id} value={company._id}>
+                {company.name}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+        <S.Divider />
+      </S.Wrapper>
+      <Products products={contract.products} />
+      <S.ButtonWrapper>
+        <Button type="primary" htmlType="submit" onClick={() => form.submit()}>
+          Submit
         </Button>
-      </S.Header>
-      <Form.Item label="InputNumber">
-        <Select
-          defaultValue="lucy"
-          style={{ width: 120 }}
-          onChange={handleChange}
-        >
-          <Option value="jack">Jack</Option>
-          <Option value="lucy">Lucy</Option>
-          <Option value="disabled" disabled>
-            Disabled
-          </Option>
-          <Option value="Yiminghe">yiminghe</Option>
-        </Select>
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <S.Input />
-      </Form.Item>
-      <Form.Item label="S.Input">
-        <DatePicker onChange={onChange} />
-      </Form.Item>
-      <Products />
-    </S.Wrapper>
+      </S.ButtonWrapper>
+    </S.Container>
   )
 }
 

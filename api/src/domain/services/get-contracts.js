@@ -3,9 +3,17 @@ export class GetContracts {
     this.contractRepository = contractRepository
   }
 
-  async getAll() {
-    const companies = await this.contractRepository.findAll()
+  async getAll(page, contractsPerPage) {
+    const contracts = await this.contractRepository.findAll(
+      page,
+      contractsPerPage
+    )
+    const total = await this.contractRepository.count()
 
-    return companies
+    return {
+      contracts,
+      page: parseInt(page),
+      total
+    }
   }
 }

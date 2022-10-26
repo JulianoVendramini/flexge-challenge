@@ -1,115 +1,136 @@
-import React, { useState } from 'react'
-
-import { Form, Input, InputNumber, Popconfirm, Table, Typography } from 'antd'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { DatePicker, DatePickerProps, InputRef } from 'antd'
+import { Button, Form, Input, Table } from 'antd'
+import type { FormInstance } from 'antd/es/form'
+import React, { useContext, useEffect, useRef, useState } from 'react'
+import { ProductProps } from '../../types/api'
+import { useSelector, useDispatch } from 'react-redux'
 
 import * as S from './styles'
+import { addProduct, useProducts } from '../../redux/sliceProducts'
+import moment from 'moment'
+import { useParams } from 'react-router-dom'
+
+const EditableContext = React.createContext<FormInstance<any> | null>(null)
 
 interface Item {
   key: string
   name: string
   amount: number
   finalUnityPrice: number
-  installaments: number
+  installments: number
   paidInstallments: number
-  beginDate: string
+  begginingTerm: string
 }
 
-const originData: Item[] = [
-  {
-    key: '1',
-    name: 'licença de sla',
-    amount: 100,
-    finalUnityPrice: 28.0,
-    installaments: 5,
-    paidInstallments: 2,
-    beginDate: '20/02/2021'
-  }
-]
-
-interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
-  editing: boolean
-  dataIndex: string
-  title: any
-  inputType: 'number' | 'text'
-  record: Item
+interface EditableRowProps {
   index: number
-  children: React.ReactNode
 }
 
-const EditableCell: React.FC<EditableCellProps> = ({
-  editing,
-  dataIndex,
-  title,
-  inputType,
-  record,
-  index,
-  children,
-  ...restProps
-}) => {
-  const inputNode = inputType === 'number' ? <InputNumber /> : <Input />
-
+const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
+  const [form] = Form.useForm()
   return (
-    <td {...restProps}>
-      {editing ? (
-        <Form.Item
-          name={dataIndex}
-          style={{ margin: 0 }}
-          rules={[
-            {
-              required: true,
-              message: `Please Input ${title}!`
-            }
-          ]}
-        >
-          {inputNode}
-        </Form.Item>
-      ) : (
-        children
-      )}
-    </td>
+    <Form form={form} component={false}>
+      <EditableContext.Provider value={form}>
+        <tr {...props} />
+      </EditableContext.Provider>
+    </Form>
   )
 }
 
-const Products = () => {
-  const [form] = Form.useForm()
-  const [data, setData] = useState(originData)
-  const [editingKey, setEditingKey] = useState('')
+interface EditableCellProps {
+  title: React.ReactNode
+  editable: boolean
+  children: React.ReactNode
+  dataIndex: keyof Item
+  record: Item
+  handleSave: (record: Item) => void
+}
 
-  const isEditing = (record: Item) => record.key === editingKey
+const EditableCell: React.FC<EditableCellProps> = ({
+  title,
+  editable,
+  children,
+  dataIndex,
+  record,
+  handleSave,
+  ...restProps
+}) => {
+  const [editing, setEditing] = useState(false)
+  const inputRef = useRef<InputRef>(null)
+  const form = useContext(EditableContext)!
 
-  const edit = (record: Partial<Item> & { key: React.Key }) => {
-    setEditingKey(record.key)
+  useEffect(() => {
+    if (editing) {
+      inputRef.current!.focus()
+    }
+  }, [editing])
+
+  const toggleEdit = () => {
+    setEditing(!editing)
+    form.setFieldsValue({ [dataIndex]: record[dataIndex] })
   }
 
-  const cancel = () => {
-    setEditingKey('')
-  }
-
-  const save = async (key: React.Key) => {
+  const save = async () => {
     try {
-      const row = (await form.validateFields()) as Item
+      const values = await form.validateFields()
 
-      const newData = [...data]
-      const index = newData.findIndex((item) => key === item.key)
-      if (index > -1) {
-        const item = newData[index]
-        newData.splice(index, 1, {
-          ...item,
-          ...row
-        })
-        setData(newData)
-        setEditingKey('')
-      } else {
-        newData.push(row)
-        setData(newData)
-        setEditingKey('')
-      }
+      toggleEdit()
+      handleSave({ ...record, ...values })
     } catch (errInfo) {
-      console.log('Validate Failed:', errInfo)
+      console.log('Save failed:', errInfo)
     }
   }
 
-  const columns = [
+  let childNode = children
+
+  if (editable) {
+    childNode = editing ? (
+      <Form.Item
+        style={{ margin: 0 }}
+        name={dataIndex}
+        rules={[
+          {
+            required: true,
+            message: `${title} is required.`
+          }
+        ]}
+      >
+        <Input ref={inputRef} onPressEnter={save} onBlur={save} />
+      </Form.Item>
+    ) : (
+      <div
+        className="editable-cell-value-wrap"
+        style={{ paddingRight: 24 }}
+        onClick={toggleEdit}
+      >
+        {children}
+      </div>
+    )
+  }
+
+  return <td {...restProps}>{childNode}</td>
+}
+
+type EditableTableProps = Parameters<typeof Table>[0]
+
+type ColumnTypes = Exclude<EditableTableProps['columns'], undefined>
+
+type Props = {
+  products: ProductProps[]
+}
+
+const Products = ({ products }: Props) => {
+  const { socialReason } = useParams()
+  const productsRedux = useSelector(useProducts)
+  const [form] = Form.useForm()
+
+  const dispatch = useDispatch()
+
+  const defaultColumns: (ColumnTypes[number] & {
+    editable?: boolean
+    dataIndex: string
+  })[] = [
     {
       title: 'name',
       dataIndex: 'name',
@@ -117,91 +138,134 @@ const Products = () => {
     },
     {
       title: 'amount',
-      dataIndex: 'amount',
-      editable: true
+      dataIndex: 'amount'
     },
     {
       title: 'finalUnityPrice',
-      dataIndex: 'finalUnityPrice',
-      editable: true
+      dataIndex: 'finalUnityPrice'
     },
     {
-      title: 'installaments',
-      dataIndex: 'installaments',
-      editable: true
+      title: 'installments',
+      dataIndex: 'installments'
     },
     {
       title: 'paidInstallments',
-      dataIndex: 'paidInstallments',
-      editable: true
+      dataIndex: 'paidInstallments'
     },
     {
-      title: 'beginDate',
-      dataIndex: 'beginDate',
-      editable: true
-    },
-    {
-      title: 'operation',
-      dataIndex: 'operation',
-      render: (_: any, record: Item) => {
-        const editable = isEditing(record)
-        return editable ? (
-          <span>
-            <Typography.Link
-              onClick={() => save(record.key)}
-              style={{ marginRight: 8 }}
-            >
-              Save
-            </Typography.Link>
-            <Popconfirm title="Sure to cancel?" onConfirm={cancel}>
-              <a>Cancel</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <Typography.Link
-            disabled={editingKey !== ''}
-            onClick={() => edit(record)}
-          >
-            Edit
-          </Typography.Link>
-        )
-      }
+      title: 'begginingTerm',
+      dataIndex: 'begginingTerm'
     }
   ]
 
-  const mergedColumns = columns.map((col) => {
+  const handleAdd = async () => {
+    const values = await form.validateFields()
+
+    const begginingTerm = moment(values.begginingTerm).format('YYYY-MM-DD')
+
+    const newProduct = {
+      ...values,
+      begginingTerm
+    }
+
+    if (values) {
+      dispatch(addProduct(newProduct))
+    }
+  }
+
+  const onChange: DatePickerProps['onChange'] = (date, dateString) => {
+    console.log(date, dateString)
+  }
+
+  const handleSave = (row: ProductProps) => {
+    const newData = [...productsRedux]
+    const index = newData.findIndex((item) => row._id === item._id)
+    const item = newData[index]
+    newData.splice(index, 1, {
+      ...item,
+      ...row
+    })
+  }
+
+  const components = {
+    body: {
+      row: EditableRow,
+      cell: EditableCell
+    }
+  }
+
+  const columns = defaultColumns.map((col) => {
     if (!col.editable) {
       return col
     }
     return {
       ...col,
-      onCell: (record: Item) => ({
+      onCell: (record: ProductProps) => ({
         record,
-        inputType: col.dataIndex === 'age' ? 'number' : 'text',
+        editable: col.editable,
         dataIndex: col.dataIndex,
         title: col.title,
-        editing: isEditing(record)
+        handleSave
       })
     }
   })
 
   return (
-    <Form form={form} component={false}>
+    <>
+      <S.Wrapper form={form} layout="vertical">
+        <S.Header>
+          <S.Title>Contract&apos;s Product</S.Title>
+          <Button onClick={handleAdd} type="primary" disabled={!!socialReason}>
+            Add product
+          </Button>
+        </S.Header>
+        <Form.Item
+          label="Name"
+          name="name"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input disabled={!!socialReason} />
+        </Form.Item>
+        <Form.Item
+          label="Amount"
+          name="amount"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input disabled={!!socialReason} />
+        </Form.Item>
+        <Form.Item
+          label="finalUnityPrice"
+          name="finalUnityPrice"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input disabled={!!socialReason} />
+        </Form.Item>
+        <Form.Item
+          label="Installments"
+          name="installments"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input disabled={!!socialReason} />
+        </Form.Item>
+        <Form.Item
+          label="Paid Installments"
+          name="paidInstallments"
+          rules={[{ required: true, message: 'Please fill this field!' }]}
+        >
+          <S.Input disabled={!!socialReason} />
+        </Form.Item>
+        <Form.Item label="Beggining Term" name="begginingTerm">
+          <DatePicker onChange={onChange} />
+        </Form.Item>
+      </S.Wrapper>
       <Table
-        components={{
-          body: {
-            cell: EditableCell
-          }
-        }}
+        components={components}
+        rowClassName={() => 'editable-row'}
         bordered
-        dataSource={data}
-        columns={mergedColumns}
-        rowClassName="editable-row"
-        pagination={{
-          onChange: cancel
-        }}
+        dataSource={products || productsRedux}
+        columns={columns as ColumnTypes}
       />
-    </Form>
+    </>
   )
 }
 

@@ -13,9 +13,38 @@ export class ContractRepository {
     return contract
   }
 
-  async findAll() {
+  async findAll(page, contractsPer) {
     const contracts = await Contract.find()
+      .skip((page - 1) * contractsPer)
+      .limit(contractsPer)
+      .populate('company')
+      .populate(['products'])
 
     return contracts
+  }
+
+  async findBySocialReason(socialReason) {
+    const contract = await Contract.findOne({ socialReason })
+      .populate('company')
+      .populate(['products'])
+
+    return contract
+  }
+
+  async update(contractId, contract) {
+    const contractToUpdate = await Contract.findByIdAndUpdate(
+      {
+        _id: contractId
+      },
+      contract
+    )
+
+    return contractToUpdate
+  }
+
+  async count() {
+    const total = await Contract.countDocuments()
+
+    return total
   }
 }

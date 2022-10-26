@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv'
 import express from 'express'
 import mongoose from 'mongoose'
-import { Product } from './infra/db/models/Product'
+import { Company } from './infra/db/models/Company'
 
 dotenv.config()
 
@@ -15,41 +15,48 @@ mongoose
     `mongodb+srv://${dbUserName}:${dbPassword}@apicluster.wgvhecl.mongodb.net/flexge-challenge?retryWrites=true&w=majority`
   )
   .then(() => {
-    console.log('Connected to database!')
+    console.log('Connected to database seed!')
     app.listen(3000)
   })
   .catch((err) => console.log(err))
 
-const seedProducts = [
+const seedCompanies = [
   {
-    name: 'Licenças por pacote',
-    amount: 100,
-    finalUnityPrice: 28,
-    installments: 0,
-    paidInstallments: 0,
-    begginingTerm: new Date('2021-01-01')
+    name: 'Flexge'
   },
   {
-    name: 'Licenças por pacote',
-    amount: 200,
-    finalUnityPrice: 25,
-    installments: 0,
-    paidInstallments: 0,
-    begginingTerm: new Date('2021-01-01')
+    name: 'Divisio'
   },
   {
-    name: 'Licenças por pacote',
-    amount: 300,
-    finalUnityPrice: 22,
-    installments: 0,
-    paidInstallments: 0,
-    begginingTerm: new Date('2021-01-01')
+    name: 'Banco do Brasil'
+  },
+  {
+    name: 'Banco Inter'
+  },
+  {
+    name: 'Havan'
+  },
+  {
+    name: 'Magazine Luiza'
+  },
+  {
+    name: 'Boticário'
+  },
+  {
+    name: 'C&A'
+  },
+  {
+    name: 'Renner'
+  },
+  {
+    name: 'Lojas Americanas'
   }
 ]
 
 const seedDB = async () => {
-  await Product.deleteMany({})
-  await Product.insertMany(seedProducts)
+  await Company.deleteMany({})
+  await Company.insertMany(seedCompanies)
+  console.log('DB seeded!')
 }
 
 seedDB().then(() => {

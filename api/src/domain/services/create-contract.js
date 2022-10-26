@@ -1,19 +1,34 @@
 export class CreateContract {
-  constructor(contractRepository) {
+  constructor(contractRepository, productRepository, companyRepository) {
     this.contractRepository = contractRepository
+    this.productRepository = productRepository
+    this.companyRepository = companyRepository
   }
 
   async create(contract) {
-    const newContract = await this.contractRepository.findByDocument(
+    const contractAlreadyExists = await this.contractRepository.findByDocument(
       contract.documentNumber
     )
 
-    if (newContract) {
+    if (contractAlreadyExists) {
       throw new Error('Contract already exists')
     }
 
-    await this.contractRepository.create(contract)
+    const products = contract.products.map(async (product) => {
+      const newProduct = await this.productRepository.create(product)
 
-    return contract
+      return newProduct
+    })
+
+    const normalizedContract = {
+      ...contract,
+      products: await Promise.all(products)
+    }
+
+    const newContract = await this.contractRepository.create(normalizedContract)
+
+    await this.companyRepository.addContract(contract.company, newContract._id)
+
+    return newContract
   }
 }

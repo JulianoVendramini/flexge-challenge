@@ -13,8 +13,16 @@ export class CompanyRepository {
     return company
   }
 
+  async addContract(company, contract) {
+    const companyToUpdate = await Company.findByIdAndUpdate(company, {
+      contract
+    })
+
+    return companyToUpdate
+  }
+
   async findAll() {
-    const companies = await Company.find()
+    const companies = await Company.find({ contract: null })
 
     return companies
   }

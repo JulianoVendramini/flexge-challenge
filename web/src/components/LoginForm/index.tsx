@@ -6,7 +6,11 @@ import * as S from './styles'
 
 const LoginForm = () => {
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  const { signIn, user } = useAuth()
+
+  if (user) {
+    navigate('/')
+  }
 
   const onFinish = async (values: any) => {
     const { username, password } = values
