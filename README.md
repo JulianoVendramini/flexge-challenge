@@ -11,7 +11,10 @@ yarn seed -> criar companies
 
 yarn dev -> rodar o server
 
-crie um conta no mongoodb atlas, deixei um arquivo .env.example com as variaveis necessarias.
+Fiz a conexão do banco com o MongoDB Atlas, imagino que vocês já saibam como fazer, mas por via das dúvidas:
+- Criar um conta no MongoDB Atlas
+- Criar um novo banco
+- Criei um .env de exemplo, basta substituir as variaveis de vocês!
 ```
 
 ## WEB
